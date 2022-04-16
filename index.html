@@ -1,0 +1,413 @@
+﻿<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport"
+          content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <title>
+        Intro to MapView - Create a 2D map | Sample | ArcGIS API for JavaScript
+        4.15
+    </title>
+    <style>
+
+        html,
+        body,
+        #viewDiv {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+        }
+
+        #controls {
+            width: 250px;
+            padding: 0px 5px 0px 5px;
+        }
+
+        .esri-button {
+            margin: 5px 0px 5px 0px;
+        }
+
+        .head {
+            text-align: center;
+        }
+
+        .footer {
+            background-color: #f1f1f1;
+            padding: 5px;
+            text-align: left;
+        }
+    </style>
+    <link rel="stylesheet"
+          href="https://js.arcgis.com/4.15/esri/themes/light/main.css" />
+    <script src="https://js.arcgis.com/4.15/"></script>
+    <script>
+require([
+        "esri/Map",
+        "esri/views/MapView",
+        "esri/layers/FeatureLayer",
+        "esri/layers/TileLayer",
+        "esri/widgets/Legend",
+        "esri/widgets/ScaleBar",
+        "esri/widgets/Search",
+        "esri/widgets/LayerList",
+        "esri/geometry/geometryEngine",
+        "esri/Graphic",
+        "esri/layers/GraphicsLayer",
+        "esri/widgets/BasemapGallery",
+         "esri/widgets/Sketch",
+
+
+
+
+      ], (Map, MapView, FeatureLayer, TileLayer,Legend,ScaleBar,Search,LayerList,geometryEngine,Graphic,GraphicsLayer,BasemapGallery,Sketch) => {
+        var flayer = new FeatureLayer({
+          url: "https://services3.arcgis.com/U26uBjSD32d7xvm2/arcgis/rest/services/CN_34Capital_Population_z_1/FeatureServer"
+        });
+
+
+
+        var map = new Map({
+          basemap: "oceans",
+          layers: [flayer]
+        });
+        // map.layer.add(flayer);
+        // map.layer.add(tilelayer);
+
+        var view = new MapView({
+          container: "viewDiv",
+          //container: "basemapGalleryDiv",
+          map: map,
+          zoom: 4,
+          center: [108, 35] // longitude, latitude
+        });
+
+
+
+        var scalebar = new ScaleBar({
+            view: view,
+            style:"ruler",
+            unit:"non-metric"
+        });
+        view.ui.add(scalebar, {
+            position:"bottom-left"
+        });
+
+
+     const searchWidget = new Search({
+          view: view
+      });
+      view.ui.add(searchWidget, {
+            position: "top-right",
+            index: 2
+      });
+
+
+
+
+
+
+
+      const graphicsLayer = new GraphicsLayer();
+      map.add(graphicsLayer);
+
+      const graphicsLayerSketch = new GraphicsLayer();
+      map.add(graphicsLayerSketch);
+
+      const resultsLayer = new GraphicsLayer();
+      map.addMany([graphicsLayer, resultsLayer]);
+
+      const point = { //Create a point
+          type: "point",
+          longitude: 120,
+          latitude: 30
+      };
+      const simpleMarkerSymbol = {
+            type: "simple-marker",
+            color: [226, 119, 40],  // Orange
+            outline: {
+                color: [255, 255, 255], // White
+                width: 1
+            }
+      };
+      const pointGraphic = new Graphic({
+          geometry: point,
+          symbol: simpleMarkerSymbol
+      });
+      graphicsLayer.add(pointGraphic);
+
+       const polyline = {
+          type: "polyline",
+          paths: [
+            [100.821527826096, 30.0139576938577], //Longitude, latitude
+            [110.814893761649, 35.0080602407843], //Longitude, latitude
+            [120.808878330345, 40.0016642996246]  //Longitude, latitude
+          ]
+        };
+      const simpleLineSymbol = {
+          type: "simple-line",
+          color: [226, 119, 40], // Orange
+          width: 2
+      };
+       const polylineGraphic = new Graphic({
+          geometry: polyline,
+          symbol: simpleLineSymbol
+      });
+      graphicsLayer.add(polylineGraphic);
+
+       const polygon = {
+            type: "polygon",
+            rings: [
+              //[100.818984489994, 31.0137559967283], //Longitude, latitude
+              [100.806796597377, 28.0215816298725], //Longitude, latitude
+              [120.791432890735, 33.0163883241613], //Longitude, latitude
+              [125.79596686535, 25.008564864635],   //Longitude, latitude
+             // [1108.808558110679, 35.0035027131376]  //Longitude, latitude
+          ]
+      };
+
+      const simpleFillSymbol = {
+          type: "simple-fill",
+          color: [227, 139, 79, 0.8],  // Orange, opacity 80%
+          outline: {
+            color: [255, 255, 255],
+            width: 1
+          }
+      };
+      const popupTemplate = {
+          title: "{Name}",
+          content: "{Description}"
+      }
+      const attributes = {
+          Name: "几何图形",
+          Description: "I am a polygon"
+      }
+
+
+      const polygonGraphic = new Graphic({
+          geometry: polygon,
+          symbol: simpleFillSymbol,
+
+          attributes: attributes,
+          popupTemplate: popupTemplate
+
+      });
+      graphicsLayer.add(polygonGraphic);
+
+
+
+
+      view.ui.add(document.getElementById("controls"), "top-right");
+
+      document.getElementById("buffer").addEventListener("click", createBuffer);
+
+      document.getElementById("reset").addEventListener("click", resetGraphics);
+
+       document.getElementById("intersect").addEventListener("click", findIntersect);
+
+       document.getElementById("union").addEventListener("click", createUnion);
+
+
+
+       let bufferGraphic;
+       function createBuffer() {
+        if (bufferGraphic) {
+            return;
+        }
+      const buffer = geometryEngine.geodesicBuffer(
+          pointGraphic.geometry,
+          1,
+          "kilometers"
+      );
+      bufferGraphic = new Graphic({
+          geometry: buffer,
+          symbol: {
+              type: "simple-fill",
+              color: [227, 139, 79, 0.5],
+              outline: {
+              color: [255, 255, 255, 255],
+              },
+          },
+      });
+              graphicsLayer.add(bufferGraphic);
+      }
+
+      function resetGraphics() {
+              graphicsLayer.remove(bufferGraphic);
+              resultsLayer.removeAll();
+              bufferGraphic = null;
+      }
+
+       function findIntersect() {
+            resultsLayer.removeAll();
+                if (!bufferGraphic) {
+                  return;
+                }
+
+            const intersectGeom = geometryEngine.intersect(polygonGraphic.geometry, bufferGraphic.geometry);
+
+            const intersectionGraphic = new Graphic({
+                    geometry: intersectGeom,
+                    symbol: {
+                        type: "simple-fill",
+                        style: "cross",
+                        color: "green",
+                        outline: {
+                            color: "green"
+                        }
+                    }
+                });
+                resultsLayer.add(intersectionGraphic);
+
+      }
+
+       function createUnion() {
+            resultsLayer.removeAll();
+                if (!bufferGraphic) {
+                  return;
+                }
+             const unionGeom = geometryEngine.union(polygonGraphic.geometry, bufferGraphic.geometry);
+
+              const unionGraphic = new Graphic({
+                geometry: unionGeom,
+                symbol: {
+                    type: "simple-fill",
+                    style: "cross",
+                    color: "green",
+                    outline: {
+                    color: "green"
+                    }
+                }
+                });
+                resultsLayer.add(unionGraphic);
+     }
+
+
+
+     const sketch = new Sketch({
+        layer: graphicsLayerSketch,
+        view: view,
+        creationMode: "update" // Auto-select
+      });
+
+      view.ui.add(sketch, "top-left");
+
+
+
+
+       sketch.on("update", (event) => {
+
+
+          if (event.state === "start") {
+          queryFeaturelayer(event.graphics[0].geometry);
+        }
+        if (event.state === "complete"){
+          graphicsLayerSketch.remove(event.graphics[0]); // Clear the graphic when a user clicks off of it or sketches new one
+        }
+        // Change
+        if (event.toolEventInfo && (event.toolEventInfo.type === "scale-stop" || event.toolEventInfo.type === "reshape-stop" || event.toolEventInfo.type === "move-stop")) {
+          queryFeaturelayer(event.graphics[0].geometry);
+        }
+       });
+
+          const parcelLayer = new FeatureLayer({
+        url: "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/LA_County_Parcels/FeatureServer/0",
+      });
+
+       function queryFeaturelayer(geometry) {
+
+        const parcelQuery = {
+         spatialRelationship: "intersects", // Relationship operation to apply
+         geometry: geometry,  // The sketch feature geometry
+         outFields: ["APN","UseType","TaxRateCity","Roll_LandValue"], // Attributes to return
+         returnGeometry: true
+        };
+
+          function displayResults(results) {
+
+      // Create a blue polygon
+        const symbol = {
+          type: "simple-fill",
+          color: [ 20, 130, 200, 0.5 ],
+          outline: {
+            color: "white",
+            width: .5
+          },
+        };
+
+        const popupTemplate = {
+          title: "Parcel {APN}",
+          content: "Type: {UseType} <br> Land value: {Roll_LandValue} <br> Tax Rate City: {TaxRateCity}"
+        };
+        results.features.map((feature) => {
+          feature.symbol = symbol;
+          feature.popupTemplate = popupTemplate;
+          return feature;
+        });
+
+          view.popup.close();
+        view.graphics.removeAll();
+       // Add features to graphics layer
+        view.graphics.addMany(results.features);
+
+      }
+
+         parcelLayer.queryFeatures(parcelQuery)
+        .then((results) => {
+
+          displayResults(results);
+
+        }).catch((error) => {
+          console.log(error);
+        });
+
+      }
+
+  let layerList = new LayerList({
+         view: view
+      });
+    view.ui.add(layerList, {
+        position: "top-right"
+    });
+
+
+    let basemapGallery = new BasemapGallery({
+        view: view,
+        container:"basemapGalleryDiv",
+        //width: 10%
+    });
+
+      view.ui.add(basemapGallery, {
+          position: "top-left"
+      });
+
+  var legend = new Legend({
+           view: view,
+              layerInfos:[{
+              layer:flayer,
+              title:"中国中心城市铁路客运交通点"
+           }]
+          });
+          view.ui.add(legend, "bottom-right");
+
+
+
+
+
+      });</script>
+</head>
+<body>
+    <h1 class="head">中国中心城市铁路客运交通点</h1>
+    <div id="viewDiv"></div>
+
+    <div id="controls" class="esri-widget">
+        <button id="buffer" class="esri-button">Buffer</button>
+        <button id="intersect" class="esri-button">Intersect</button>
+        <button id="union" class="esri-button">Union</button>
+        <button id="reset" class="esri-button esri-button--secondary">Reset</button>
+    </div>
+    <div class="footer">
+        <h4>地图说明</h4>
+        <p>点击左上方--Query a feature layer (spatial)工具，执行从一个要素层查询访问空间特征功能右上方--Calculate geometries工具，依次点击Buffer、Intersect、Union、Reset,可用于缓冲、相交或联合的操作几何形状创建一个新的几何体；除此两个地图功能外，还有比例尺、图例、搜索框与图层列表、底图库等微件实现地图的基本功能</p>
+    </div>
+</body>
+</html>
